@@ -1,0 +1,33 @@
+services:
+  api:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_PATH: /data/fleet.db
+    volumes:
+      - fleet-data:/data
+    ports:
+      - "8011:8011"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8011/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  collector:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_PATH: /data/fleet.db
+    command: ["python", "-m", "backend.collector"]
+    volumes:
+      - fleet-data:/data
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  fleet-data:
+

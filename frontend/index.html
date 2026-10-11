@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DRUMS Fleet Tracking</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQ3ynhFJSmZJpBLLdQZQ6iR+eolKeUM=" crossorigin="">
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <header><div><span class="eyebrow">DRUMS</span><h1>Fleet Tracking</h1></div><div id="summary">Loading…</div></header>
+  <main>
+    <aside>
+      <label for="search">Search fleet</label>
+      <input id="search" type="search" placeholder="Name, IMO or MMSI">
+      <div id="fleet"></div>
+      <div class="legend"><span><i class="fresh"></i> &lt;15 min</span><span><i class="aging"></i> 15–60 min</span><span><i class="stale"></i> &gt;60 min</span></div>
+    </aside>
+    <div id="map"></div>
+  </main>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="/assets/app.js"></script>
+</body>
+</html>
+
