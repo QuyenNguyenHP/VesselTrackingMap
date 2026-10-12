@@ -1,12 +1,75 @@
-const map=L.map('map',{worldCopyJump:true}).setView([1.3,103.8],3);
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
-const markers=L.layerGroup().addTo(map);let vessels=[],line=null;
-const ageClass=t=>{if(!t)return'unknown';const m=(Date.now()-new Date(t).getTime())/60000;return m<15?'fresh':m<60?'aging':'stale'};
-const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-const when=t=>t?new Date(t).toLocaleString():'Never detected';
-function markerIcon(v){const color={fresh:'#38d990',aging:'#f0b44c',stale:'#758793'}[ageClass(v.received_at)]||'#758793';return L.divIcon({className:'',html:`<div class="ship-marker" style="width:17px;height:17px;background:${color}"></div>`,iconSize:[17,17],iconAnchor:[8,8]})}
-async function track(imo){const r=await fetch(`/api/vessels/${encodeURIComponent(imo)}/history`);if(!r.ok)return;const p=await r.json();if(line)map.removeLayer(line);if(p.length>1){line=L.polyline(p.map(x=>[x.lat,x.lon]),{color:'#35b9db',weight:3}).addTo(map);map.fitBounds(line.getBounds(),{padding:[30,30]})}}
-function render(q=''){markers.clearLayers();const list=document.querySelector('#fleet');list.innerHTML='';const filtered=vessels.filter(v=>`${v.name} ${v.imo} ${v.mmsi}`.toLowerCase().includes(q.toLowerCase()));for(const v of filtered){const button=document.createElement('button');button.className='vessel';button.innerHTML=`<strong><span class="status ${ageClass(v.received_at)}"></span>${esc(v.name)}</strong><small>IMO ${esc(v.imo)} · ${when(v.received_at)}</small>`;list.append(button);if(v.lat!=null&&v.lon!=null){const link=v.drums_ship_id?`<a class="popup-link" href="${esc(v.drums_ship_id)}" target="_blank" rel="noopener">Open DRUMS dashboard</a>`:'';const marker=L.marker([v.lat,v.lon],{icon:markerIcon(v)}).bindPopup(`<div class="popup-title"><b>${esc(v.name)}</b></div><div class="popup-row">IMO: ${esc(v.imo)}</div><div class="popup-row">MMSI: ${esc(v.mmsi)}</div><div class="popup-row">Speed: ${v.speed??'N/A'} kn</div><div class="popup-row">Course: ${v.course??'N/A'}°</div><div class="popup-row">Received: ${when(v.received_at)}</div><a class="popup-link" href="#" data-track="${esc(v.imo)}">Show track</a><br>${link}`).addTo(markers);marker.on('popupopen',()=>document.querySelector(`[data-track="${v.imo}"]`)?.addEventListener('click',e=>{e.preventDefault();track(v.imo)}));button.onclick=()=>{map.setView([v.lat,v.lon],8);marker.openPopup()}}else button.onclick=()=>alert('No AIS position has been received for this vessel yet.')}}if(!filtered.length)list.innerHTML='<p class="empty">No matching vessels.</p>'}
-async function refresh(){try{const r=await fetch('/api/vessels');if(!r.ok)throw Error();vessels=await r.json();const located=vessels.filter(v=>v.lat!=null).length;document.querySelector('#summary').textContent=`${vessels.length} registered · ${located} located`;render(document.querySelector('#search').value)}catch{document.querySelector('#summary').textContent='API unavailable'}}
-document.querySelector('#search').addEventListener('input',e=>render(e.target.value));refresh();setInterval(refresh,30000);
+const map = L.map('map').setView([1.3, 103.8], 3);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
 
+const form = document.querySelector('#lookup-form');
+const input = document.querySelector('#imo');
+const message = document.querySelector('#message');
+const result = document.querySelector('#result');
+let marker;
+
+const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+}[char]));
+const display = (value, suffix = '') => value === null || value === undefined || value === '' ? '—' : `${escapeHtml(value)}${suffix}`;
+const age = timestamp => {
+  if (!timestamp) return 'unknown age';
+  const hours = Math.max(0, (Date.now() - new Date(timestamp).getTime()) / 3600000);
+  if (hours < 1) return `${Math.round(hours * 60)} minutes ago`;
+  if (hours < 48) return `${Math.round(hours)} hours ago`;
+  const days = Math.round(hours / 24);
+  if (days < 60) return `${days} days ago`;
+  const months = Math.round(days / 30.44);
+  if (months < 24) return `${months} months ago`;
+  return `${(days / 365.25).toFixed(1)} years ago`;
+};
+
+form.addEventListener('submit', async event => {
+  event.preventDefault();
+  const imo = input.value.trim();
+  message.className = 'loading';
+  message.textContent = 'Searching vessel data and latest AIS position…';
+  result.hidden = true;
+  form.querySelector('button').disabled = true;
+
+  try {
+    const response = await fetch(`/api/lookup/${encodeURIComponent(imo)}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Vessel lookup failed');
+
+    message.textContent = data.position_available && data.historical
+      ? `${data.provider}'s latest known position is historical: ${age(data.timestamp)}.`
+      : data.position_available ? '' : 'Vessel found, but this provider has no stored AIS position from the last five years.';
+    message.className = data.historical || !data.position_available ? 'notice' : '';
+    result.innerHTML = `
+      <div class="result-heading"><div><small>VESSEL FOUND</small><h2>${display(data.name)}</h2></div><span>IMO ${display(data.imo)}</span></div>
+      <dl>
+        <div><dt>MMSI</dt><dd>${display(data.mmsi)}</dd></div>
+        <div><dt>Type</dt><dd>${display(data.vessel_type)}</dd></div>
+        <div><dt>Flag</dt><dd>${display(data.flag)}</dd></div>
+        <div><dt>Call sign</dt><dd>${display(data.call_sign)}</dd></div>
+        <div><dt>Year built</dt><dd>${display(data.year_built)}</dd></div>
+        <div><dt>Dimensions</dt><dd>${display(data.length, ' m')} × ${display(data.breadth, ' m')}</dd></div>
+        <div><dt>Speed</dt><dd>${display(data.speed, ' kn')}</dd></div>
+        <div><dt>Course</dt><dd>${display(data.course, '°')}</dd></div>
+        <div><dt>Data source</dt><dd>${display(data.provider)}</dd></div>
+        <div><dt>Position time</dt><dd>${data.timestamp ? `${new Date(data.timestamp).toLocaleString()} (${age(data.timestamp)})` : '—'}</dd></div>
+      </dl>`;
+    result.hidden = false;
+
+    if (data.position_available) {
+      if (marker) marker.remove();
+      marker = L.marker([data.latitude, data.longitude]).addTo(map)
+        .bindPopup(`<b>${escapeHtml(data.name)}</b><br>IMO ${escapeHtml(data.imo)}<br>Source: ${escapeHtml(data.provider)}<br>${data.historical ? 'Historical position · ' : 'Last seen · '}${age(data.timestamp)}`).openPopup();
+      map.setView([data.latitude, data.longitude], 9);
+      setTimeout(() => map.invalidateSize(), 0);
+    }
+  } catch (error) {
+    message.className = 'error';
+    message.textContent = error.message;
+  } finally {
+    form.querySelector('button').disabled = false;
+  }
+});
