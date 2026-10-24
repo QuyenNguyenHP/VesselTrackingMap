@@ -22,6 +22,8 @@ VESSEL_API_KEY=your_vesselapi_key_here
 
 `AISSTREAM_API_KEY` is not required for the simple IMO search. AISStream cannot search directly by IMO; it streams new AIS messages using MMSI filters.
 
+OpenWaters is used as a free fallback for positions heard in the last 30 minutes. The collector polls it every five minutes by default and stores positions for registered vessels. Override the interval with `OPENWATERS_POLL_SECONDS` (minimum 60).
+
 ## Run
 
 ```bash

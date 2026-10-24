@@ -8,7 +8,8 @@ const form = document.querySelector('#lookup-form');
 const input = document.querySelector('#imo');
 const message = document.querySelector('#message');
 const result = document.querySelector('#result');
-let marker;
+const vesselMarkers = new Map();
+let initialFleetView = true;
 
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
@@ -25,6 +26,65 @@ const age = timestamp => {
   if (months < 24) return `${months} months ago`;
   return `${(days / 365.25).toFixed(1)} years ago`;
 };
+
+const markerPopup = vessel => `
+  <b>${escapeHtml(vessel.name || 'Unknown vessel')}</b><br>
+  IMO ${escapeHtml(vessel.imo)}<br>
+  ${vessel.provider ? `Source: ${escapeHtml(vessel.provider)}<br>` : ''}
+  Last seen: ${age(vessel.timestamp || vessel.source_at)}
+`;
+
+const upsertVesselMarker = (vessel, open = false) => {
+  const latitude = vessel.latitude ?? vessel.lat;
+  const longitude = vessel.longitude ?? vessel.lon;
+  if (latitude === null || latitude === undefined || longitude === null || longitude === undefined) return null;
+
+  let vesselMarker = vesselMarkers.get(String(vessel.imo));
+  if (vesselMarker) {
+    vesselMarker.setLatLng([latitude, longitude]);
+  } else {
+    vesselMarker = L.marker([latitude, longitude]).addTo(map);
+    vesselMarkers.set(String(vessel.imo), vesselMarker);
+  }
+  vesselMarker.bindTooltip(escapeHtml(vessel.name || `IMO ${vessel.imo}`), { direction: 'top' });
+  vesselMarker.bindPopup(markerPopup(vessel));
+  if (open) vesselMarker.openPopup();
+  return vesselMarker;
+};
+
+const refreshTrackedVessels = async () => {
+  try {
+    const response = await fetch('/api/vessels');
+    if (!response.ok) return;
+    const vessels = await response.json();
+    const visibleImos = new Set();
+    const bounds = [];
+
+    vessels.forEach(vessel => {
+      const vesselMarker = upsertVesselMarker(vessel);
+      if (!vesselMarker) return;
+      visibleImos.add(String(vessel.imo));
+      bounds.push(vesselMarker.getLatLng());
+    });
+
+    vesselMarkers.forEach((vesselMarker, imo) => {
+      if (!visibleImos.has(imo)) {
+        vesselMarker.remove();
+        vesselMarkers.delete(imo);
+      }
+    });
+
+    if (initialFleetView && bounds.length) {
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 9 });
+      initialFleetView = false;
+    }
+  } catch (_) {
+    // Keep the last markers visible if a refresh temporarily fails.
+  }
+};
+
+refreshTrackedVessels();
+setInterval(refreshTrackedVessels, 60_000);
 
 form.addEventListener('submit', async event => {
   event.preventDefault();
@@ -60,9 +120,7 @@ form.addEventListener('submit', async event => {
     result.hidden = false;
 
     if (data.position_available) {
-      if (marker) marker.remove();
-      marker = L.marker([data.latitude, data.longitude]).addTo(map)
-        .bindPopup(`<b>${escapeHtml(data.name)}</b><br>IMO ${escapeHtml(data.imo)}<br>Source: ${escapeHtml(data.provider)}<br>${data.historical ? 'Historical position · ' : 'Last seen · '}${age(data.timestamp)}`).openPopup();
+      upsertVesselMarker(data, true);
       map.setView([data.latitude, data.longitude], 9);
       setTimeout(() => map.invalidateSize(), 0);
     }

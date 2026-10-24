@@ -20,6 +20,7 @@ FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "")
 VESSEL_API_KEY = os.getenv("VESSEL_API_KEY", "").strip()
 VESSEL_API_BASE_URL = os.getenv("VESSEL_API_BASE_URL", "https://api.vesselapi.com/v1").rstrip("/")
+OPENWATERS_API_BASE_URL = os.getenv("OPENWATERS_API_BASE_URL", "https://ais.openwaters.io/v1").rstrip("/")
 
 
 def valid_imo(value: str) -> bool:
@@ -81,6 +82,61 @@ def vessel_api_get(path: str, **params) -> dict:
         raise HTTPException(502, "Could not connect to the vessel-data API")
 
 
+def openwaters_position(mmsi: str) -> dict:
+    if not mmsi:
+        return {}
+    request = Request(
+        f"{OPENWATERS_API_BASE_URL}/vessels?{urlencode({'mmsi': mmsi})}",
+        headers={"Accept": "application/geo+json, application/json"},
+    )
+    try:
+        with urlopen(request, timeout=20) as response:
+            features = json.load(response).get("features", [])
+    except (HTTPError, URLError, TimeoutError, ValueError):
+        return {}
+    if not features:
+        return {}
+    feature = features[0]
+    properties = feature.get("properties", {})
+    coordinates = feature.get("geometry", {}).get("coordinates", [])
+    if len(coordinates) < 2:
+        return {}
+    lon, lat = coordinates[:2]
+    return {
+        "latitude": lat,
+        "longitude": lon,
+        "mmsi": properties.get("mmsi") or mmsi,
+        "imo": properties.get("imo"),
+        "vessel_name": properties.get("name"),
+        "sog": properties.get("sog"),
+        "cog": properties.get("cog"),
+        "heading": properties.get("heading"),
+        "nav_status": properties.get("nav_status"),
+        "timestamp": properties.get("seen"),
+        "destination": properties.get("destination"),
+        "source": properties.get("source"),
+    }
+
+
+def latest_stored_position(mmsi: str) -> dict:
+    if not mmsi:
+        return {}
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT lat,lon,speed,course,source_at,received_at FROM positions WHERE mmsi=? ORDER BY id DESC LIMIT 1",
+            (mmsi,),
+        ).fetchone()
+    if not row:
+        return {}
+    return {
+        "latitude": row["lat"],
+        "longitude": row["lon"],
+        "sog": row["speed"],
+        "cog": row["course"],
+        "timestamp": row["source_at"] or row["received_at"],
+    }
+
+
 def parse_api_time(value: str | None) -> datetime | None:
     if not value:
         return None
@@ -140,13 +196,29 @@ def lookup_vessel(imo: str):
     info_response = vessel_api_get(f"/vessel/{imo}", **{"filter.idType": "imo"})
     vessel = info_response.get("vessel", info_response)
 
+    mmsi = str(vessel.get("mmsi") or "")
     historical = False
+    provider = "VesselAPI"
     try:
         position_response = vessel_api_get(f"/vessel/{imo}/position", **{"filter.idType": "imo"})
         position = position_response.get("position", position_response)
     except HTTPException as exc:
         if exc.status_code != 404:
             raise
+        position = {}
+
+    if position.get("latitude") is None and not position.get("location", {}).get("coordinates"):
+        position = openwaters_position(mmsi)
+        if position:
+            provider = "OpenWaters"
+
+    if not position:
+        position = latest_stored_position(mmsi)
+        if position:
+            provider = "Stored AIS"
+            historical = True
+
+    if not position:
         position = find_historical_position(imo)
         historical = bool(position)
 
@@ -157,9 +229,9 @@ def lookup_vessel(imo: str):
         if len(coordinates) >= 2:
             lon, lat = coordinates[:2]
     return {
-        "provider": "VesselAPI",
+        "provider": provider,
         "imo": str(vessel.get("imo") or position.get("imo") or imo),
-        "mmsi": str(vessel.get("mmsi") or position.get("mmsi") or ""),
+        "mmsi": str(mmsi or position.get("mmsi") or ""),
         "name": vessel.get("name") or position.get("vessel_name") or "Unknown vessel",
         "vessel_type": vessel.get("vessel_type"),
         "flag": vessel.get("country"),
