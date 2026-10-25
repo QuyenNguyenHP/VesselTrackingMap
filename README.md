@@ -1,46 +1,72 @@
-# Vessel Finder
+# OpenWaters Vessel Tracking
 
-A simple Ubuntu web app that looks up a vessel by IMO number and displays its information and latest available AIS position on a Leaflet map.
+A FastAPI app that monitors configured vessels using OpenWaters only and shows their latest known locations on a Leaflet map. No provider API key is required by this implementation.
 
-The FastAPI backend also serves the frontend, so only one application process is required.
+## Configure vessels
 
-## Setup
+Edit `config.json` in the project root. The initial list is empty; add the real MMSI numbers of the vessels you want to monitor:
+
+```json
+{
+  "vessels": [
+    {
+      "mmsi": "123456789",
+      "imo": "1234567",
+      "name": "Replace with your vessel",
+      "enabled": true
+    }
+  ]
+}
+```
+
+The identifiers above are placeholders. MMSI must be a unique nine-digit string. IMO and name are optional; IMO is used only for local search. Set `enabled` to false to pause monitoring. Changes are read on the next poll without restarting.
+
+The app polls immediately on startup and every **300 seconds (five minutes)** thereafter, requesting `/vessels?mmsi=...` from `https://ais.openwaters.io/v1`. It saves the latest returned location under each vessel's `position` in the same `config.json`:
+
+```json
+"position": {
+  "latitude": 1.3,
+  "longitude": 103.8,
+  "speed": 12.4,
+  "course": 90,
+  "timestamp": "2026-10-24T06:00:00Z",
+  "received_at": "2026-10-24T06:01:00+00:00",
+  "provider": "OpenWaters"
+}
+```
+
+`timestamp` is the provider's observation time; `received_at` is when the app saved the report. `last_checked_at` and top-level `last_poll_at` record successful checks, even when no position is returned. Missing reports and failed requests preserve the previous location. Polling every five minutes does not guarantee a new AIS observation every five minutes.
+
+Only the latest position is saved, not a route history. Writes use atomic file replacement. Stop the app before manually editing if you need to avoid any chance of concurrent edits. Run only one app worker/instance per config file.
+
+## Run locally
 
 ```bash
-cd /home/daikai/VesselTrackingMap
-sudo apt update
-sudo apt install -y python3-venv
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
+python -m venv .venv
+# Linux/macOS:
+source .venv/bin/activate
+# Windows PowerShell instead:
+# .venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8011
 ```
 
-Create an API key at [VesselAPI](https://dashboard.vesselapi.com/) and add it to `.env`:
+Open http://localhost:8011. Monitoring starts automatically with the web app. Search configured vessels by MMSI or IMO. The map refreshes saved data every minute.
 
-```dotenv
-VESSEL_API_KEY=your_vesselapi_key_here
-```
+Optional environment variables: `CONFIG_PATH` (defaults to the project-root config.json) and `OPENWATERS_API_BASE_URL`. Set these in the process environment; `.env` is not loaded automatically.
 
-`AISSTREAM_API_KEY` is not required for the simple IMO search. AISStream cannot search directly by IMO; it streams new AIS messages using MMSI filters.
-
-OpenWaters is used as a free fallback for positions heard in the last 30 minutes. The collector polls it every five minutes by default and stores positions for registered vessels. Override the interval with `OPENWATERS_POLL_SECONDS` (minimum 60).
-
-## Run
+## Docker
 
 ```bash
-cd /home/daikai/VesselTrackingMap
-.venv/bin/python -m uvicorn backend.main:app --host 0.0.0.0 --port 8011
+docker compose up --build -d
 ```
 
-Open [http://localhost:8011](http://localhost:8011), enter a valid seven-digit IMO number, and select **Search**.
+Compose mounts the project directory at `/data` so updates persist to the host's `config.json`. A directory mount allows atomic replacement of the file. No separate collector service or database is needed.
 
-The API endpoint used by the frontend is:
+## API
 
-```text
-GET /api/lookup/{imo}
-```
+- `GET /api/vessels`: enabled vessels and latest saved locations.
+- `GET /api/lookup/{mmsi_or_imo}`: one configured vessel.
+- `GET /api/health`: process health (does not imply provider availability).
 
-## Notes
-
-- Vessel positions depend on terrestrial AIS coverage and may not be current or available.
-- Keep the API key in `.env`; never put it in frontend JavaScript or commit it to Git.
-- The included OpenStreetMap tiles are appropriate for light usage. Review the tile policy before production use.
+Vessel configuration is managed through the JSON file. The former database registration and history endpoints are no longer used.

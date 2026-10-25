@@ -1,142 +1,76 @@
 import asyncio
 import json
 import logging
+import math
 import os
-from datetime import datetime, timedelta, timezone
-from urllib.error import HTTPError, URLError
+from datetime import datetime, timezone
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-import websockets
-from dotenv import load_dotenv
+from .config import load_config, save_config
 
-from .database import connect, initialize
-
-load_dotenv()
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-LOG = logging.getLogger("ais-collector")
-URL = "wss://stream.aisstream.io/v0/stream"
-OPENWATERS_API_BASE_URL = os.getenv("OPENWATERS_API_BASE_URL", "https://ais.openwaters.io/v1").rstrip("/")
-OPENWATERS_POLL_SECONDS = max(60, int(os.getenv("OPENWATERS_POLL_SECONDS", "300")))
+LOG = logging.getLogger(__name__)
+POLL_SECONDS = 300
+OPENWATERS_BATCH_SIZE = 6
+BASE_URL = os.getenv("OPENWATERS_API_BASE_URL", "https://ais.openwaters.io/v1").rstrip("/")
 
 
-def registered_mmsis() -> list[str]:
-    with connect() as conn:
-        return [row[0] for row in conn.execute("SELECT mmsi FROM vessels")]
-
-
-def store_position(mmsi: str, lat, lon, speed=None, course=None, source_at=None) -> bool:
-    if not mmsi or not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)) or not (-90 <= lat <= 90 and -180 <= lon <= 180):
-        return False
-    now = datetime.now(timezone.utc).isoformat()
-    with connect() as conn:
-        known = conn.execute("SELECT 1 FROM vessels WHERE mmsi=?", (mmsi,)).fetchone()
-        if not known:
-            return False
-        latest = conn.execute("SELECT source_at FROM positions WHERE mmsi=? ORDER BY id DESC LIMIT 1", (mmsi,)).fetchone()
-        if latest and source_at and latest["source_at"] == source_at:
-            return False
-        conn.execute("INSERT INTO positions (mmsi,lat,lon,speed,course,source_at,received_at) VALUES (?,?,?,?,?,?,?)", (mmsi, lat, lon, speed, course, source_at, now))
-    return True
-
-
-def store(message: dict) -> bool:
-    if message.get("MessageType") != "PositionReport":
-        return False
-    meta = message.get("MetaData", {})
-    report = message.get("Message", {}).get("PositionReport", {})
-    return store_position(
-        str(meta.get("MMSI", report.get("UserID", ""))),
-        report.get("Latitude"),
-        report.get("Longitude"),
-        report.get("Sog"),
-        report.get("Cog"),
-        meta.get("time_utc"),
-    )
-
-
-def fetch_openwaters() -> int:
-    mmsis = registered_mmsis()
-    if not mmsis:
+def fetch_openwaters():
+    config = load_config()
+    requested = {v["mmsi"] for v in config["vessels"] if v.get("enabled", True)}
+    if not requested:
         return 0
-    request = Request(
-        f"{OPENWATERS_API_BASE_URL}/vessels?{urlencode({'mmsi': ','.join(mmsis)})}",
-        headers={"Accept": "application/geo+json, application/json"},
-    )
-    with urlopen(request, timeout=20) as response:
-        features = json.load(response).get("features", [])
-    stored = 0
-    for feature in features:
-        properties = feature.get("properties", {})
-        coordinates = feature.get("geometry", {}).get("coordinates", [])
-        if len(coordinates) < 2:
-            continue
-        lon, lat = coordinates[:2]
-        stored += store_position(
-            str(properties.get("mmsi", "")), lat, lon,
-            properties.get("sog"), properties.get("cog"), properties.get("seen"),
+    now = datetime.now(timezone.utc).isoformat()
+    positions = {}
+    requested_list = sorted(requested)
+    for offset in range(0, len(requested_list), OPENWATERS_BATCH_SIZE):
+        batch = requested_list[offset:offset + OPENWATERS_BATCH_SIZE]
+        request = Request(
+            f"{BASE_URL}/vessels?{urlencode({'mmsi': ','.join(batch)})}",
+            headers={"Accept": "application/geo+json, application/json"},
         )
+        with urlopen(request, timeout=20) as response:
+            payload = json.load(response)
+        for feature in payload.get("features", []):
+            properties = feature.get("properties") or {}
+            coordinates = (feature.get("geometry") or {}).get("coordinates") or []
+            mmsi = str(properties.get("mmsi", ""))
+            if mmsi not in requested or len(coordinates) < 2:
+                continue
+            lon, lat = coordinates[:2]
+            if any(isinstance(n, bool) or not isinstance(n, (int, float)) or not math.isfinite(n) for n in (lat, lon)):
+                continue
+            if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+                continue
+            positions[mmsi] = {
+                "latitude": lat, "longitude": lon,
+                "speed": properties.get("sog"), "course": properties.get("cog"),
+                "timestamp": properties.get("seen"), "received_at": now,
+                "provider": "OpenWaters",
+            }
+    # Reload after the request to preserve developer changes made during network I/O.
+    config = load_config()
+    stored = 0
+    for vessel in config["vessels"]:
+        mmsi = vessel["mmsi"]
+        if mmsi not in requested or not vessel.get("enabled", True):
+            continue
+        vessel["last_checked_at"] = now
+        if mmsi in positions:
+            vessel["position"] = positions[mmsi]
+            stored += 1
+    config["last_poll_at"] = now
+    save_config(config)
     return stored
 
 
-async def openwaters_loop() -> None:
+async def openwaters_loop():
     while True:
+        started = asyncio.get_running_loop().time()
         try:
             stored = await asyncio.to_thread(fetch_openwaters)
-            LOG.info("OpenWaters poll stored %d new position(s)", stored)
-        except (HTTPError, URLError, TimeoutError, ValueError) as exc:
-            LOG.warning("OpenWaters poll failed: %s", exc)
-        await asyncio.sleep(OPENWATERS_POLL_SECONDS)
-
-
-def prune() -> None:
-    days = max(1, int(os.getenv("POSITION_RETENTION_DAYS", "90")))
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
-    with connect() as conn:
-        conn.execute("DELETE FROM positions WHERE received_at < ?", (cutoff,))
-
-
-async def collect_once(key: str) -> None:
-    mmsis = registered_mmsis()
-    if not mmsis:
-        LOG.info("No vessels registered; checking again in 30 seconds")
-        await asyncio.sleep(30)
-        return
-    subscription = {"APIKey": key, "BoundingBoxes": [[[-90, -180], [90, 180]]], "FiltersShipMMSI": mmsis, "FilterMessageTypes": ["PositionReport"]}
-    LOG.info("Connecting with %d registered MMSI(s)", len(mmsis))
-    async with websockets.connect(URL, ping_interval=20, ping_timeout=20, open_timeout=30) as socket:
-        await socket.send(json.dumps(subscription))
-        while True:
-            raw = await asyncio.wait_for(socket.recv(), timeout=300)
-            store(json.loads(raw))
-
-
-async def aisstream_loop(key: str) -> None:
-    delay = 2
-    while True:
-        try:
-            prune()
-            await collect_once(key)
-            delay = 2
-        except asyncio.CancelledError:
-            raise
-        except Exception as exc:
-            LOG.warning("Collector disconnected: %s; retrying in %ds", exc, delay)
-            await asyncio.sleep(delay)
-            delay = min(delay * 2, 60)
-
-
-async def main() -> None:
-    initialize()
-    key = os.getenv("AISSTREAM_API_KEY", "").strip()
-    tasks = [openwaters_loop()]
-    if key:
-        tasks.append(aisstream_loop(key))
-    else:
-        LOG.warning("AISSTREAM_API_KEY is missing; running OpenWaters polling only")
-    await asyncio.gather(*tasks)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-
+            LOG.info("OpenWaters updated %d vessel positions", stored)
+        except Exception:
+            LOG.exception("OpenWaters poll failed; retaining saved positions")
+        elapsed = asyncio.get_running_loop().time() - started
+        await asyncio.sleep(max(0, POLL_SECONDS - elapsed))

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 32 32" role="img" aria-labelledby="title">
+  <title id="title">Directional vessel marker</title>
+  <path
+    d="M16 2 27 27 16 22 5 27Z"
+    fill="#087f78"
+    stroke="#ffffff"
+    stroke-width="2"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M16 8v12"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="2"
+    stroke-linecap="round"
+  />
+</svg>
