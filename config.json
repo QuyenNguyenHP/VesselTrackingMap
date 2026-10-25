@@ -5,14 +5,14 @@
       "mmsi": "563034300",
       "name": "MARINE ROSE",
       "enabled": true,
-      "last_checked_at": "2026-10-25T01:38:32.849144+00:00",
+      "last_checked_at": "2026-10-25T02:07:25.543597+00:00",
       "position": {
         "latitude": 1.2558033333333334,
         "longitude": 103.91922833333334,
         "speed": 2.7,
         "course": 73.7,
         "timestamp": "2026-10-25T01:32:42Z",
-        "received_at": "2026-10-25T01:38:32.849144+00:00",
+        "received_at": "2026-10-25T02:07:25.543597+00:00",
         "provider": "OpenWaters"
       }
     },
@@ -21,14 +21,14 @@
       "mmsi": "352004552",
       "name": "TRUONG MINH DREAM 01",
       "enabled": true,
-      "last_checked_at": "2026-10-25T01:38:32.849144+00:00",
+      "last_checked_at": "2026-10-25T02:07:25.543597+00:00",
       "position": {
-        "latitude": -29.583373333333334,
-        "longitude": 32.129398333333334,
-        "speed": 8.2,
-        "course": 39.2,
-        "timestamp": "2026-10-25T01:29:09Z",
-        "received_at": "2026-10-25T01:38:32.849144+00:00",
+        "latitude": -29.54139,
+        "longitude": 32.16435666666667,
+        "speed": 7.9,
+        "course": 34.9,
+        "timestamp": "2026-10-25T01:52:08Z",
+        "received_at": "2026-10-25T02:07:25.543597+00:00",
         "provider": "OpenWaters"
       }
     },
@@ -37,14 +37,14 @@
       "mmsi": "352003265",
       "name": "TRUONG MINH DREAM 05",
       "enabled": true,
-      "last_checked_at": "2026-10-25T01:38:32.849144+00:00",
+      "last_checked_at": "2026-10-25T02:07:25.543597+00:00",
       "position": {
-        "latitude": 36.067886666666666,
-        "longitude": -5.206665,
-        "speed": 10.8,
-        "course": 272.1,
-        "timestamp": "2026-10-25T01:37:52Z",
-        "received_at": "2026-10-25T01:38:32.849144+00:00",
+        "latitude": 36.07553666666667,
+        "longitude": -5.318420000000001,
+        "speed": 9.4,
+        "course": 279.9,
+        "timestamp": "2026-10-25T02:07:20Z",
+        "received_at": "2026-10-25T02:07:25.543597+00:00",
         "provider": "OpenWaters"
       }
     },
@@ -53,14 +53,14 @@
       "mmsi": "538011476",
       "name": "DUBAI WORLD",
       "enabled": true,
-      "last_checked_at": "2026-10-25T01:38:32.849144+00:00",
+      "last_checked_at": "2026-10-25T02:07:25.543597+00:00",
       "position": {
         "latitude": 22.7722,
         "longitude": 119.77105,
         "speed": 12.9,
         "course": 3.4,
         "timestamp": "2026-10-24T22:47:10Z",
-        "received_at": "2026-10-25T01:38:32.849144+00:00",
+        "received_at": "2026-10-25T02:07:25.543597+00:00",
         "provider": "OpenWaters"
       }
     },
@@ -69,14 +69,14 @@
       "mmsi": "538011512",
       "name": "DUBAI NATURE",
       "enabled": true,
-      "last_checked_at": "2026-10-25T01:38:32.849144+00:00",
+      "last_checked_at": "2026-10-25T02:07:25.543597+00:00",
       "position": {
         "latitude": 25.199605,
         "longitude": 56.487761666666664,
         "speed": null,
         "course": null,
         "timestamp": "2026-09-04T00:13:28Z",
-        "received_at": "2026-10-25T01:38:32.849144+00:00",
+        "received_at": "2026-10-25T02:07:25.543597+00:00",
         "provider": "OpenWaters"
       }
     },
@@ -85,14 +85,14 @@
       "mmsi": "352002909",
       "name": "TRUONG MINH DREAM 02",
       "enabled": true,
-      "last_checked_at": "2026-10-25T01:38:32.849144+00:00",
+      "last_checked_at": "2026-10-25T02:07:25.543597+00:00",
       "position": {
         "latitude": 20.77603,
         "longitude": 107.26103166666667,
         "speed": 7.3,
         "course": 208.6,
         "timestamp": "2026-10-24T16:00:04Z",
-        "received_at": "2026-10-25T01:38:32.849144+00:00",
+        "received_at": "2026-10-25T02:07:25.543597+00:00",
         "provider": "OpenWaters"
       }
     },
@@ -101,14 +101,14 @@
       "mmsi": "352003269",
       "name": "TRUONG MINH DREAM 06",
       "enabled": true,
-      "last_checked_at": "2026-10-25T01:38:32.849144+00:00",
+      "last_checked_at": "2026-10-25T02:07:25.543597+00:00",
       "position": {
-        "latitude": 20.876205000000002,
-        "longitude": 107.07002000000001,
+        "latitude": 20.876351666666668,
+        "longitude": 107.06990666666667,
         "speed": 0,
         "course": 0,
-        "timestamp": "2026-10-25T01:30:58Z",
-        "received_at": "2026-10-25T01:38:32.849144+00:00",
+        "timestamp": "2026-10-25T02:01:00Z",
+        "received_at": "2026-10-25T02:07:25.543597+00:00",
         "provider": "OpenWaters"
       }
     },
@@ -117,14 +117,14 @@
       "mmsi": "538011580",
       "name": "DUBAI ECO",
       "enabled": true,
-      "last_checked_at": "2026-10-25T01:38:32.849144+00:00",
+      "last_checked_at": "2026-10-25T02:07:25.543597+00:00",
       "position": {
         "latitude": -25.777275,
         "longitude": -48.281031666666664,
         "speed": 0.4,
         "course": 25.9,
         "timestamp": "2026-10-25T00:41:36Z",
-        "received_at": "2026-10-25T01:38:32.849144+00:00",
+        "received_at": "2026-10-25T02:07:25.543597+00:00",
         "provider": "OpenWaters"
       }
     },
@@ -133,14 +133,14 @@
       "mmsi": "538011581",
       "name": "DUBAI EARTH",
       "enabled": true,
-      "last_checked_at": "2026-10-25T01:38:32.849144+00:00",
+      "last_checked_at": "2026-10-25T02:07:25.543597+00:00",
       "position": {
         "latitude": -35.0262,
         "longitude": 19.571340000000003,
         "speed": 11.4,
         "course": 108.8,
         "timestamp": "2026-10-19T12:13:55Z",
-        "received_at": "2026-10-25T01:38:32.849144+00:00",
+        "received_at": "2026-10-25T02:07:25.543597+00:00",
         "provider": "OpenWaters"
       }
     },
@@ -149,14 +149,14 @@
       "mmsi": "538011583",
       "name": "DUBAI OCEAN",
       "enabled": true,
-      "last_checked_at": "2026-10-25T01:38:32.849144+00:00",
+      "last_checked_at": "2026-10-25T02:07:25.543597+00:00",
       "position": {
         "latitude": 21.048513333333336,
         "longitude": 68.15950000000001,
         "speed": 12.2,
         "course": 16.3,
         "timestamp": "2026-10-19T02:22:39Z",
-        "received_at": "2026-10-25T01:38:32.849144+00:00",
+        "received_at": "2026-10-25T02:07:25.543597+00:00",
         "provider": "OpenWaters"
       }
     },
@@ -165,14 +165,14 @@
       "mmsi": "538011584",
       "name": "DUBAI SKY",
       "enabled": true,
-      "last_checked_at": "2026-10-25T01:38:32.849144+00:00",
+      "last_checked_at": "2026-10-25T02:07:25.543597+00:00",
       "position": {
         "latitude": -35.04958333333333,
         "longitude": 19.600021666666667,
         "speed": 11.2,
         "course": 102.3,
         "timestamp": "2026-10-25T00:53:25Z",
-        "received_at": "2026-10-25T01:38:32.849144+00:00",
+        "received_at": "2026-10-25T02:07:25.543597+00:00",
         "provider": "OpenWaters"
       }
     },
@@ -181,14 +181,14 @@
       "mmsi": "525110092",
       "name": "SHANAYA",
       "enabled": true,
-      "last_checked_at": "2026-10-25T01:38:32.849144+00:00",
+      "last_checked_at": "2026-10-25T02:07:25.543597+00:00",
       "position": {
-        "latitude": -5.928656666666667,
-        "longitude": 105.97583166666666,
+        "latitude": -5.92879,
+        "longitude": 105.975645,
         "speed": 0,
-        "course": 181.3,
-        "timestamp": "2026-10-25T01:38:08Z",
-        "received_at": "2026-10-25T01:38:32.849144+00:00",
+        "course": 229.4,
+        "timestamp": "2026-10-25T02:07:08Z",
+        "received_at": "2026-10-25T02:07:25.543597+00:00",
         "provider": "OpenWaters"
       }
     },
@@ -197,14 +197,14 @@
       "mmsi": "563024500",
       "name": "MARINE QUEENIE",
       "enabled": true,
-      "last_checked_at": "2026-10-25T01:38:32.849144+00:00",
+      "last_checked_at": "2026-10-25T02:07:25.543597+00:00",
       "position": {
         "latitude": 1.24359,
         "longitude": 103.78179333333333,
         "speed": 7.8,
         "course": 315.5,
         "timestamp": "2026-10-25T00:40:30Z",
-        "received_at": "2026-10-25T01:38:32.849144+00:00",
+        "received_at": "2026-10-25T02:07:25.543597+00:00",
         "provider": "OpenWaters"
       }
     },
@@ -213,14 +213,14 @@
       "mmsi": "563038700",
       "name": "MARINE SELENA",
       "enabled": true,
-      "last_checked_at": "2026-10-25T01:38:32.849144+00:00",
+      "last_checked_at": "2026-10-25T02:07:25.543597+00:00",
       "position": {
         "latitude": 1.1624483333333333,
         "longitude": 103.71082500000001,
         "speed": 8,
         "course": 308.1,
         "timestamp": "2026-10-24T15:50:11Z",
-        "received_at": "2026-10-25T01:38:32.849144+00:00",
+        "received_at": "2026-10-25T02:07:25.543597+00:00",
         "provider": "OpenWaters"
       }
     },
@@ -229,17 +229,17 @@
       "mmsi": "563038800",
       "name": "MARINE TINA",
       "enabled": true,
-      "last_checked_at": "2026-10-25T01:38:32.849144+00:00",
+      "last_checked_at": "2026-10-25T02:07:25.543597+00:00",
       "position": {
         "latitude": 1.2828283333333335,
         "longitude": 103.942375,
         "speed": 0,
         "course": 170,
         "timestamp": "2026-10-24T10:17:33Z",
-        "received_at": "2026-10-25T01:38:32.849144+00:00",
+        "received_at": "2026-10-25T02:07:25.543597+00:00",
         "provider": "OpenWaters"
       }
     }
   ],
-  "last_poll_at": "2026-10-25T01:38:32.849144+00:00"
+  "last_poll_at": "2026-10-25T02:07:25.543597+00:00"
 }

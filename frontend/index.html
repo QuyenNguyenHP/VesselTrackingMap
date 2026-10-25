@@ -5,14 +5,19 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Vessel Finder</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-  <link rel="stylesheet" href="/assets/app.css?v=20261025-2">
+  <link rel="stylesheet" href="/assets/app.css?v=20261025-4">
   <style>.notice{color:#9a6500!important}</style>
 </head>
 <body>
   <main>
     <section class="search-panel">
-      <span class="eyebrow">VESSEL TRACKING</span>
-      <h1>Find a vessel</h1>
+      <header class="panel-header">
+        <div class="panel-heading">
+          <span class="eyebrow">VESSEL TRACKING</span>
+          <h1>Find a vessel</h1>
+        </div>
+        <img class="brand-logo" src="/assets/dqtech-logo-transparent.png" alt="DQ.TECH" width="50" height="50">
+      </header>
       <p class="intro">Enter a 9-digit MMSI to look up a vessel in OpenWaters without an API key. Results depend on data coverage.</p>
       <form id="lookup-form">
         <label for="mmsi">MMSI</label>
