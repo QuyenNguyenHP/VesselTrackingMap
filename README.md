@@ -19,7 +19,7 @@ Edit `config.json` in the project root. The initial list is empty; add the real 
 }
 ```
 
-The identifiers above are placeholders. MMSI must be a unique nine-digit string. IMO and name are optional; IMO is used only for local search. Set `enabled` to false to pause monitoring. Changes are read on the next poll without restarting.
+The identifiers above are placeholders. MMSI must be a unique nine-digit string. IMO and name are optional; IMO is displayed as vessel information only; lookup accepts MMSI only. Set `enabled` to false to pause monitoring. Changes are read on the next poll without restarting.
 
 The app polls immediately on startup and every **300 seconds (five minutes)** thereafter, requesting `/vessels?mmsi=...` from `https://ais.openwaters.io/v1`. It saves the latest returned location under each vessel's `position` in the same `config.json`:
 
@@ -51,7 +51,7 @@ python -m pip install -r requirements.txt
 python -m uvicorn backend.main:app --host 0.0.0.0 --port 8011
 ```
 
-Open http://localhost:8011. Monitoring starts automatically with the web app. Search configured vessels by MMSI or IMO. The map refreshes saved data every minute.
+Open http://localhost:8011. Monitoring starts automatically with the web app. Search any vessel by its 9-digit MMSI: configured vessels use saved data, and other identifiers are queried directly from OpenWaters. Remote results are not added to config.json or continuous monitoring. MMSI lookup uses anonymous OpenWaters access without an API key or paid subscription; provider request limits still apply (see https://openwaters.io/api/ais/). Coverage is not guaranteed. The map refreshes saved data every minute.
 
 Optional environment variables: `CONFIG_PATH` (defaults to the project-root config.json) and `OPENWATERS_API_BASE_URL`. Set these in the process environment; `.env` is not loaded automatically.
 
@@ -66,7 +66,7 @@ Compose mounts the project directory at `/data` so updates persist to the host's
 ## API
 
 - `GET /api/vessels`: enabled vessels and latest saved locations.
-- `GET /api/lookup/{mmsi_or_imo}`: one configured vessel.
+- `GET /api/lookup/{mmsi}`: a configured vessel or an on-demand OpenWaters lookup (9-digit MMSI only).
 - `GET /api/health`: process health (does not imply provider availability).
 
 Vessel configuration is managed through the JSON file. The former database registration and history endpoints are no longer used.

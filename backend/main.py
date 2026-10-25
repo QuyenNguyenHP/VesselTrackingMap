@@ -1,4 +1,5 @@
 import asyncio
+import re
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .collector import openwaters_loop
 from .config import load_config
+from .lookup import lookup_openwaters
 
 FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 
@@ -47,10 +49,13 @@ def list_vessels():
 
 @app.get("/api/lookup/{identifier}")
 def lookup_vessel(identifier: str):
+    identifier = identifier.strip()
+    if not re.fullmatch(r"[0-9]{9}", identifier):
+        raise HTTPException(400, "Enter a 9-digit MMSI.")
     for vessel in list_vessels():
-        if identifier in (vessel["mmsi"], str(vessel.get("imo", ""))):
+        if identifier == vessel["mmsi"]:
             return vessel
-    raise HTTPException(404, "Vessel is not monitored. Add its MMSI to config.json.")
+    return vessel_result(lookup_openwaters(identifier))
 
 
 app.mount("/assets", StaticFiles(directory=FRONTEND / "assets"), name="assets")

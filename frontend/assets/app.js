@@ -5,12 +5,13 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 const form = document.querySelector('#lookup-form');
-const input = document.querySelector('#imo');
+const input = document.querySelector('#mmsi');
 const message = document.querySelector('#message');
 const result = document.querySelector('#result');
 const vesselMarkers = new Map();
 let initialFleetView = true;
 let selectedMmsi = null;
+let searchedVessel = null;
 let fleet = [];
 let lookupSequence = 0;
 const vesselList = document.querySelector('#vessel-list');
@@ -37,7 +38,7 @@ const renderFleet = () => {
     button.addEventListener('click', () => {
       lookupSequence++;
       form.querySelector('button').disabled = false;
-      input.value = vessel.imo || vessel.mmsi;
+      input.value = vessel.mmsi;
       showVessel(vessel, true);
     });
     return button;
@@ -112,11 +113,12 @@ const upsertVesselMarker = (vessel, open = false) => {
 };
 
 const showVessel = (data, focusMap = false) => {
+  searchedVessel = data.lookup_source === "remote" ? data : null;
   selectedMmsi = String(data.mmsi);
   markSelection();
     message.textContent = data.position_available && data.historical
-      ? `Latest saved OpenWaters observation: ${age(data.timestamp)}.`
-      : data.position_available ? '' : 'No OpenWaters position has been saved for this vessel yet.';
+      ? `Latest known OpenWaters observation: ${age(data.timestamp)}.`
+      : data.position_available ? '' : 'No position is available for this vessel in OpenWaters.';
     message.className = data.historical || !data.position_available ? 'notice' : '';
     result.innerHTML = `
       <div class="result-heading"><div><small>VESSEL FOUND</small><h2>${display(data.name)}</h2></div><span>IMO ${display(data.imo)}</span></div>
@@ -144,12 +146,13 @@ const refreshTrackedVessels = async () => {
     fleet = vessels;
     renderFleet();
     const selected = fleet.find(v => String(v.mmsi) === selectedMmsi);
-    if (selected) showVessel(selected);
-    else if (selectedMmsi) { selectedMmsi = null; result.hidden = true; message.textContent = ''; }
+    if (selected && !searchedVessel) showVessel(selected);
+    else if (selectedMmsi && !searchedVessel) { selectedMmsi = null; result.hidden = true; message.textContent = ''; }
     const visibleImos = new Set();
     const bounds = [];
 
-    vessels.forEach(vessel => {
+    const mapVessels = searchedVessel ? [...vessels.filter(v => String(v.mmsi) !== selectedMmsi), searchedVessel] : vessels;
+    mapVessels.forEach(vessel => {
       const vesselMarker = upsertVesselMarker(vessel);
       if (!vesselMarker) return;
       visibleImos.add(String(vessel.mmsi));
@@ -163,7 +166,7 @@ const refreshTrackedVessels = async () => {
       }
     });
 
-    if (initialFleetView && bounds.length) {
+    if (initialFleetView && !selectedMmsi && bounds.length) {
       map.fitBounds(bounds, { padding: [40, 40], maxZoom: 9 });
       initialFleetView = false;
     }
@@ -177,7 +180,7 @@ setInterval(refreshTrackedVessels, 60_000);
 
 form.addEventListener('submit', async event => {
   event.preventDefault();
-  const imo = input.value.trim();
+  const mmsi = input.value.trim();
   const requestId = ++lookupSequence;
   message.className = 'loading';
   message.textContent = 'Searching vessel data and latest AIS position…';
@@ -185,7 +188,7 @@ form.addEventListener('submit', async event => {
   form.querySelector('button').disabled = true;
 
   try {
-    const response = await fetch(`/api/lookup/${encodeURIComponent(imo)}`);
+    const response = await fetch(`/api/lookup/${encodeURIComponent(mmsi)}`);
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || 'Vessel lookup failed');
 
